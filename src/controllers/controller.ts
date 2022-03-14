@@ -1,26 +1,34 @@
 import executeQuery from "../services/mysql.service"
 import {encrypt, compare} from "../services/handleBcrypt"
+import {tokenSign} from "../services/generateToken"
 
-const getUser =async (req, res) => {
+
+const postLogin =async (req, res) => {
     try{
-        const {correo, contraseña} = req.body;
-        const response = await executeQuery(`SELECT idusuario, correo, contraseña FROM usuarios WHERE correo = '${correo}'`);
+        const {correo, password} = req.body;
+        const response = await executeQuery(`SELECT idusuario, correo, password FROM usuarios WHERE correo = '${correo}'`);
         
+        if (!response[0].correo) {
+            res.status(404)
+            res.send({ error: 'User not found' })
+        }
         
-        const checkContraseña = await compare(contraseña.toString(), response[0].contraseña)
+        const checkContraseña = await compare(password.toString(), response[0].password)
         
-        
+        const tokenSession = await tokenSign(response[0])
+
         if(checkContraseña){
             const userData ={
-                "idUser: ": response[0].idusuario,
+                "idUser": response[0].idusuario,
                 correo, 
-                "contraseña": "validated"
+                "password": "validated"
             }
             const data = {
             message: `${response.length} datos encontrados`,
-            datos:  userData 
+            datos:  userData, 
+            token: tokenSession
             }
-            res.json(data);
+            res.json(data );
         }else{
             res.json({ error:"password"})
         }
@@ -34,7 +42,7 @@ const getUser =async (req, res) => {
 
 const getCuenta =async (req, res) => {
     try{
-        const {id} = req.body;
+        const {id} = req.params;
                 
         const response = await executeQuery(`SELECT idcuenta, correo, saldo FROM cuenta INNER JOIN usuarios ON
                                              cuenta.idusuarioFK = usuarios.idusuario 
@@ -55,7 +63,7 @@ const getCuenta =async (req, res) => {
 const getMovimientos =async (req, res) => {
     try{
         const {id} = req.params;
-        const response = await executeQuery(`SELECT * FROM movimientos WHERE idcuentaFK = ${req.params.id}`);
+        const response = await executeQuery(`SELECT * FROM movimientos WHERE idcuentaFK = ${id}`);
         const data = {
             message: `${response.length} datos encontrados`,
             datos: response.length > 0 ? response : null
@@ -69,14 +77,16 @@ const getMovimientos =async (req, res) => {
 }
 
 const postUser = async(req, res) => {
-    const {correo, contraseña} = req.body;  
+    const {correo, password} = req.body;  
     try{
         
-        const cHash = await encrypt(contraseña)
-        const response = await executeQuery(`INSERT INTO usuarios (correo, contraseña) VALUES ('${correo}', '${cHash}')`);
+        const cHash = await encrypt(password)
+        const response = await executeQuery(`INSERT INTO usuarios (correo, password) VALUES ('${correo}', '${cHash}')`);
         const idMonedero = await crearMonedero();
         const idCuenta = await crearCuenta(response.insertId, idMonedero);
         await movimiento(idCuenta, 0, 0);
+
+       
 
         res.status(201).json({message: 'created', idUser: response.insertId, idCuenta: idCuenta});
         
@@ -164,5 +174,5 @@ async function  crearMonedero (){
 }
 
 
-export {getCuenta, getUser, getMovimientos, postUser, putRetiro, putAbono}
+export {getCuenta, postLogin, getMovimientos, postUser, putRetiro, putAbono}
 

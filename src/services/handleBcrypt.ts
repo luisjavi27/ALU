@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs')
-// import {bcrypt} from "bcryptjs"
+
 
 const encrypt = async (textPlain) =>{
     const hash = await bcrypt.hash(textPlain.toString(), 10)

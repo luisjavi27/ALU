@@ -1,2 +1,0 @@
-# ALU
-Prueba tecnica

@@ -6,6 +6,7 @@ exports.default = {
     DB_USER: process.env.DB_USER || 'root',
     DB_PASSWORD: process.env.DB_PASSWORD || '1234',
     DATABASE: process.env.DATABASE || 'aludb',
-    DB_PORT: process.env.DB_PORT || 3306
+    DB_PORT: process.env.DB_PORT || 3306,
+    JWT_SECRET: process.env.JWT_SECRET || '123456'
 };
 //# sourceMappingURL=config.js.map

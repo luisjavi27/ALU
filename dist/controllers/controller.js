@@ -12,23 +12,30 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.putAbono = exports.putRetiro = exports.postUser = exports.getMovimientos = exports.getUser = exports.getCuenta = void 0;
+exports.putAbono = exports.putRetiro = exports.postUser = exports.getMovimientos = exports.postLogin = exports.getCuenta = void 0;
 const mysql_service_1 = __importDefault(require("../services/mysql.service"));
 const handleBcrypt_1 = require("../services/handleBcrypt");
-const getUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const generateToken_1 = require("../services/generateToken");
+const postLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { correo, contraseña } = req.body;
-        const response = yield (0, mysql_service_1.default)(`SELECT idusuario, correo, contraseña FROM usuarios WHERE correo = '${correo}'`);
-        const checkContraseña = yield (0, handleBcrypt_1.compare)(contraseña.toString(), response[0].contraseña);
+        const { correo, password } = req.body;
+        const response = yield (0, mysql_service_1.default)(`SELECT idusuario, correo, password FROM usuarios WHERE correo = '${correo}'`);
+        if (!response[0].correo) {
+            res.status(404);
+            res.send({ error: 'User not found' });
+        }
+        const checkContraseña = yield (0, handleBcrypt_1.compare)(password.toString(), response[0].password);
+        const tokenSession = yield (0, generateToken_1.tokenSign)(response[0]);
         if (checkContraseña) {
             const userData = {
-                "idUser: ": response[0].idusuario,
+                "idUser": response[0].idusuario,
                 correo,
-                "contraseña": "validated"
+                "password": "validated"
             };
             const data = {
                 message: `${response.length} datos encontrados`,
-                datos: userData
+                datos: userData,
+                token: tokenSession
             };
             res.json(data);
         }
@@ -41,10 +48,10 @@ const getUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.status(500).send(error);
     }
 });
-exports.getUser = getUser;
+exports.postLogin = postLogin;
 const getCuenta = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { id } = req.body;
+        const { id } = req.params;
         const response = yield (0, mysql_service_1.default)(`SELECT idcuenta, correo, saldo FROM cuenta INNER JOIN usuarios ON
                                              cuenta.idusuarioFK = usuarios.idusuario 
                                              INNER JOIN monedero ON cuenta.idsaldoFK = monedero.idsaldo
@@ -64,7 +71,7 @@ exports.getCuenta = getCuenta;
 const getMovimientos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
-        const response = yield (0, mysql_service_1.default)(`SELECT * FROM movimientos WHERE idcuentaFK = ${req.params.id}`);
+        const response = yield (0, mysql_service_1.default)(`SELECT * FROM movimientos WHERE idcuentaFK = ${id}`);
         const data = {
             message: `${response.length} datos encontrados`,
             datos: response.length > 0 ? response : null
@@ -78,10 +85,10 @@ const getMovimientos = (req, res) => __awaiter(void 0, void 0, void 0, function*
 });
 exports.getMovimientos = getMovimientos;
 const postUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { correo, contraseña } = req.body;
+    const { correo, password } = req.body;
     try {
-        const cHash = yield (0, handleBcrypt_1.encrypt)(contraseña);
-        const response = yield (0, mysql_service_1.default)(`INSERT INTO usuarios (correo, contraseña) VALUES ('${correo}', '${cHash}')`);
+        const cHash = yield (0, handleBcrypt_1.encrypt)(password);
+        const response = yield (0, mysql_service_1.default)(`INSERT INTO usuarios (correo, password) VALUES ('${correo}', '${cHash}')`);
         const idMonedero = yield crearMonedero();
         const idCuenta = yield crearCuenta(response.insertId, idMonedero);
         yield movimiento(idCuenta, 0, 0);

@@ -11,7 +11,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.compare = exports.encrypt = void 0;
 const bcrypt = require('bcryptjs');
-// import {bcrypt} from "bcryptjs"
 const encrypt = (textPlain) => __awaiter(void 0, void 0, void 0, function* () {
     const hash = yield bcrypt.hash(textPlain.toString(), 10);
     return hash;
